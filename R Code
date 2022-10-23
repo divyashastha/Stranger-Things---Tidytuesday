@@ -1,0 +1,68 @@
+---
+title: "Stranger Things_Week 5"
+output: html_document
+date: "2022-10-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#List of libraries used
+
+
+library(tidyverse)
+library(vtable)
+library(ggplot2)
+library(tidytext)
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(janitor)
+library(viridis)
+
+
+#Read data from tidytuesday
+
+
+st_dialogue <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-10-18/stranger_things_all_dialogue.csv')
+
+
+stranger_things <- st_dialogue %>% 
+  select(season, episode, stage_direction) %>% 
+  drop_na(stage_direction) %>%
+  unnest_tokens(word, stage_direction, token = stringr::str_split, pattern = "\\] \\[") %>%
+  mutate(across(word, str_replace, '\\[', '')) %>%
+  mutate(across(word, str_replace, '\\]', '')) 
+
+stranger_things[c('word_1', 'word_2')] <- str_split_fixed(stranger_things$word, ' ', 2)
+
+stranger_things <- stranger_things %>%
+  select(season,episode,word_1,word_2) %>%
+  filter(word_1 == "dustin" | word_1 == "mike" | word_1 == "lucas" | word_1 == "will" | word_1 == 'eleven' | word_1 == 'max' | word_1 == 'steve' | word_1 == 'nancy' | 
+           word_1 == 'robin' | word_1 == 'jonathan' | word_1 == 'eddie' | word_1 == 'hopper' | word_1 == 'joyce' | word_1 == 'murray')
+           
+stranger_things1 <- stranger_things %>%
+  group_by(word_1, word_2) %>%
+  count(word_2) %>%
+  arrange(-n) %>%
+  rename("Characters" = "word_1")
+
+stranger_things2 <- stranger_things1[-(1:14),]
+
+stranger_things2 %>%  
+  filter(n>7) %>%
+  ggplot(aes(x = word_2, y = n, fill = Characters, label = n)) +  # Create stacked bar chart
+  geom_bar(stat = "identity") +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(x="High frequency actions", y="Frequency of each action by characters",
+       title="STRANGER THINGS",
+       subtitle="Analysis of High Frequency Actions of Characters across Four Seasons") +
+  geom_text(size = 3, colour = 'grey', position = position_stack(vjust = 0.5)) +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_blank(), axis.line = element_line(color='black'),
+      axis.title.y = element_text(vjust = +3),
+      axis.title.x = element_text(vjust = -0.75)) +
+  theme(legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'))
